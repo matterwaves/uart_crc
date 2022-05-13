@@ -2,13 +2,13 @@
 #define _UART_CRC_H_
 
 
+#include <stdint.h>
 #ifdef MBED_H
   #include "mbed.h"
   #include "cycle_count_delay.h" //cycle_delay_ms()
 #endif
 
 #ifdef Arduino_h
-  #include <stdint.h>
   #include <Arduino.h>
 #endif
 

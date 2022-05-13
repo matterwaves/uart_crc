@@ -41,13 +41,19 @@ void UART_CRC::init(){
 UART_CRC::~UART_CRC(){}
 
 void UART_CRC::flush_rx(){
-      memset(&(this->rx_buff),0,buff_size);
-      bytes_read=0;
+    for (int i =0; i<buff_size; i++){
+        rx_buff[i]=0;
     }
+    bytes_read=0;
+}
+
 void UART_CRC::flush_tx(){
-      memset(&(this->tx_buff),0,buff_size);
-      bytes_wrote=0;
+    for (int i =0; i<buff_size; i++){
+        tx_buff[i]=0;
     }
+    bytes_wrote=0;
+}
+
 void UART_CRC::write_tx_buff(char *to_write, uint16_t len){
   len++;
   while (--len >0){
@@ -82,15 +88,6 @@ bool UART_CRC::pending(){
 }
 
 bool UART_CRC::readable(){
-#ifdef MBED_H
-    return uart_.readable();
-#endif
-#ifdef Arduino_h
-    return uart_.available();
-#endif
-}
-
-void UART_CRC::readable(){
 #ifdef MBED_H
     return uart_.readable();
 #endif
