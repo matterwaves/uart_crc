@@ -38,9 +38,11 @@ public:
     ///@param[in] buff_size - size of tx/rx buffer to keep (bytes), last 2 bytes for CRC 
     ///@param[in] max_attempts - number of packet resend attempts
     ///@param[in] timeout_ms - timeout for waiting for ACK/NACK
-    UART_CRC(uint8_t tx, uint8_t rx, uint8_t tx_active, uint8_t rx_active, 
+    UART_CRC( uint8_t tx_active, uint8_t rx_active, 
             uint16_t baud = 9600, uint8_t max_attempts = 16,uint8_t timeout_ms = 100);
-    HardwareSerial uart_;
+
+    //Change this if using a different serial port on the arduino
+    HardwareSerial &uart_ = Serial1;
 #endif
 
     ///@brief uart_crc destructor
@@ -102,7 +104,8 @@ private:
     ///@brief check if there is any data to read on the uart line
     bool readable();
     ///@brief read a single char from the stream
-    void get_c();
+    //@param[in] buff - pointer to buffer to store the char
+    void get_c(char *buff);
 
     ///@brief interface for waiting
     void wait_ms(uint16_t ms);

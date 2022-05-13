@@ -1,4 +1,4 @@
-#include <mbed.h>
+#include <Arduino.h>
 #include "uart_crc.h"
     
 
@@ -16,19 +16,18 @@ UART_CRC::UART_CRC(PinName tx, PinName rx, PinName tx_active, PinName rx_active,
 #endif
 
 #ifdef Arduino_h
-UART_CRC::UART_CRC(uint8_t tx, uint8_t rx, uint8_t tx_active, uint8_t rx_active,
+UART_CRC::UART_CRC(uint8_t tx_active, uint8_t rx_active,
         uint16_t baud /*9600*/, uint8_t max_attempts /*15*/,uint8_t timeout_ms/*100*/): 
     tx_active(tx_active),rx_active(rx_active),
-    max_attempts(max_attempts),timeout_ms(timeout_ms),
+    max_attempts(max_attempts),timeout_ms(timeout_ms)
     {
-        pinMode(tx_active,OUTPUT);
-        pinMode(rx_active,INPUT);
-        digitalWrite(tx_active,LOW);
+      pinMode(tx_active,OUTPUT);
+      pinMode(rx_active,INPUT);
+      digitalWrite(tx_active,LOW);
       flush_tx();
       flush_rx();
       Serial1.begin(baud);
-      uart_ = Serial1;
-     //uart_(tx,rx,baud)
+      //HardwareSerial &uart_ = Serial1;
     }
 #endif
 
@@ -109,6 +108,16 @@ void UART_CRC::wait_ms(uint16_t ms){
 #endif
 }
 
+void UART_CRC::get_c(char *buff){
+#ifdef MBED_H
+    uart_.read(buff,1);
+#endif
+
+#ifdef Arduino_h
+    *buff = uart_.read();
+#endif
+}
+
 
 UART_CRC::CmdResult UART_CRC::rx_message(){
         /*
@@ -119,8 +128,9 @@ UART_CRC::CmdResult UART_CRC::rx_message(){
     //Attempt to recv message until max attempts exceeded
       for (uint8_t attempt = 0; attempt < max_attempts; attempt++){
         //Read all chars in the buffer
-        while (this->uart_.readable()){
-          this->uart_.read(&rx_buff[bytes_read++],1);
+        //while (uart_.readable()){
+        while (readable()){
+          get_c(&rx_buff[bytes_read++]);
         }
         
 
@@ -131,14 +141,14 @@ UART_CRC::CmdResult UART_CRC::rx_message(){
             //CRC Passed, send ACK: last two bytes of buffer
             crc_buff[0]=rx_buff[buff_size-1];
             crc_buff[1]=rx_buff[buff_size-2];
-            this->uart_.write(crc_buff,2);
-            this->uart_.sync();
+            uart_.write(crc_buff,2);
+            wait_for_send();
             return CmdResult::Success;
           }
           else{
             //CRC Failed, send NACK to request resend
-            this->uart_.write(NACK,2);
-            this->uart_.sync();
+            uart_.write(NACK,2);
+            wait_for_send();
             if (attempt< max_attempts-1){
                 flush_rx();
             }
@@ -179,7 +189,7 @@ UART_CRC::CmdResult UART_CRC::tx_message(){
     while (ack_bytes < 2){
       //if (uart_.readable()){
       if (readable()){
-        uart_.read( &crc_buff[ack_bytes++],1 );
+        get_c( &crc_buff[ack_bytes++]);
       }
      }
      ack_bytes=0;
