@@ -1,5 +1,7 @@
+#include <mbed.h>
 #include "uart_crc.h"
     
+
 
 #ifdef MBED_H
 UART_CRC::UART_CRC(PinName tx, PinName rx, PinName tx_active, PinName rx_active,
@@ -62,10 +64,12 @@ void UART_CRC::write_tx_buff(char *to_write, uint16_t len){
 }
 void UART_CRC::flush_uart_rx(){
 #ifdef MBED_H
-    while(uart_.readable()){uart_.read(&trash,1)};
+    while(uart_.readable()){
+        uart_.read(&trash,1);
+    };
 #endif
 #ifdef Arduino_h
-    while(uart_.available()){uart_.read()};
+    while(uart_.available()){uart_.read();};
 #endif
 }
 
