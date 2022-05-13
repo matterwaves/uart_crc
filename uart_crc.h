@@ -1,8 +1,17 @@
 #ifndef _UART_CRC_H_
 #define _UART_CRC_H_
 
-#include "mbed.h"
-#include "cycle_count_delay.h" //cycle_delay_ms()
+
+#ifdef MBED_H
+  #include "mbed.h"
+  #include "cycle_count_delay.h" //cycle_delay_ms()
+#endif
+
+#ifdef Arduino_h
+  #include <stdint.h>
+  #include <Arduino.h>
+#endif
+
 class UART_CRC {
 
 public:
@@ -13,12 +22,26 @@ public:
     Success
   };
 
-    ///@brief uart_crc constructor
+
+#ifdef MBED_H
+    ///@brief uart_crc constructor [mbed]
     ///@param[in] buff_size - size of tx/rx buffer to keep (bytes), last 2 bytes for CRC 
     ///@param[in] max_attempts - number of packet resend attempts
     ///@param[in] timeout_ms - timeout for waiting for ACK/NACK
     UART_CRC(PinName tx, PinName rx, PinName tx_active, PinName rx_active, 
             uint16_t baud = 9600, uint8_t max_attempts = 16,uint8_t timeout_ms = 100);
+    UARTSerial uart_;
+#endif
+
+#ifdef Arduino_h
+    ///@brief uart_crc constructor [arduino]
+    ///@param[in] buff_size - size of tx/rx buffer to keep (bytes), last 2 bytes for CRC 
+    ///@param[in] max_attempts - number of packet resend attempts
+    ///@param[in] timeout_ms - timeout for waiting for ACK/NACK
+    UART_CRC(uint8_t tx, uint8_t rx, uint8_t tx_active, uint8_t rx_active, 
+            uint16_t baud = 9600, uint8_t max_attempts = 16,uint8_t timeout_ms = 100);
+    HardwareSerial uart_;
+#endif
 
     ///@brief uart_crc destructor
     ~UART_CRC(void);
@@ -34,7 +57,7 @@ public:
 
     ///@brief checks if a message is pending on the uart line
     //@returns True or False
-    bool available();
+    bool pending();
     
     ///@brief compute the CCIT-16-False CRC
     ///@param[in] ptr - pointer to buffer which contains message
@@ -58,7 +81,6 @@ public:
     uint8_t  max_attempts;
     uint8_t timeout_ms;
 
-    UARTSerial uart_;
 
     char rx_buff[buff_size];
 
@@ -72,8 +94,28 @@ private:
     char tx_buff[buff_size];
     uint8_t ack_bytes=0;
     char trash=0;
+
+    ///@brief dump the buffer thats managed by the serial driver
+    void flush_uart_rx();
+    ///@brief wait until message has been sent
+    void wait_for_send();
+    ///@brief check if there is any data to read on the uart line
+    bool readable();
+    ///@brief read a single char from the stream
+    void get_c();
+
+    ///@brief interface for waiting
+    void wait_ms(uint16_t ms);
+
+#ifdef MBED_H
     DigitalOut tx_active;
     DigitalIn rx_active;
+#endif
+
+#ifdef Arduino_h
+    uint8_t tx_active;
+    uint8_t rx_active;
+#endif
 };
 
 
