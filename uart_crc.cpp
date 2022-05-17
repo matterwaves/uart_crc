@@ -17,17 +17,20 @@ UART_CRC::UART_CRC(PinName tx, PinName rx, PinName tx_active, PinName rx_active,
 #ifdef Arduino_h
 UART_CRC::UART_CRC(uint8_t tx_active, uint8_t rx_active,
         uint16_t baud /*9600*/, uint8_t max_attempts /*15*/,uint8_t timeout_ms/*100*/): 
-    tx_active(tx_active),rx_active(rx_active),
+    tx_active(tx_active),rx_active(rx_active), baud(baud),
     max_attempts(max_attempts),timeout_ms(timeout_ms)
     {
+      //HardwareSerial &uart_ = Serial1;
+    }
+
+void UART_CRC::begin(){
       pinMode(tx_active,OUTPUT);
       pinMode(rx_active,INPUT);
       digitalWrite(tx_active,LOW);
       flush_tx();
       flush_rx();
-      Serial1.begin(baud);
-      //HardwareSerial &uart_ = Serial1;
-    }
+    Serial1.begin(baud);
+}
 #endif
 
 
@@ -85,6 +88,7 @@ bool UART_CRC::pending(){
     return (uart_.readable() && rx_active);
 #endif
 #ifdef Arduino_h
+    //Serial.println("msg pending");
     return (uart_.available() && digitalRead(rx_active) );
 #endif
 }
@@ -118,6 +122,16 @@ void UART_CRC::get_c(char *buff){
 }
 
 
+void UART_CRC::set_tx_active(bool STATE){
+#ifdef MBED_H
+    tx_active = STATE;
+#endif
+#ifdef Arduino_h
+    digitalWrite(tx_active, STATE);
+#endif
+}
+
+
 UART_CRC::CmdResult UART_CRC::rx_message(){
         /*
          * todo:
@@ -126,15 +140,24 @@ UART_CRC::CmdResult UART_CRC::rx_message(){
          */
     //Attempt to recv message until max attempts exceeded
       for (uint8_t attempt = 0; attempt < max_attempts; attempt++){
+        //At low baud rates, this delay is necessary to make sure msg is complete
+        // minimum delay (ms) = 1000*buff_size*8/baud
+        wait_ms(27);
         //Read all chars in the buffer
-        //while (uart_.readable()){
         while (readable()){
           get_c(&rx_buff[bytes_read++]);
-        }
-        
-
+        }  
         //If buffer is nonempty, do a CRC
         if (bytes_read >0 ){
+#ifdef Arduino_h
+          Serial.print("rx'd: ");
+          for (int i=0; i< buff_size;i++){
+              Serial.print(rx_buff[i]);
+          }
+          Serial.println();
+          Serial.print("Bytes read: ");
+          Serial.println(bytes_read);
+#endif
           crc= calcrc(rx_buff,buff_size);
           if (crc == 0 ){
             //CRC Passed, send ACK: last two bytes of buffer
@@ -142,16 +165,35 @@ UART_CRC::CmdResult UART_CRC::rx_message(){
             crc_buff[1]=rx_buff[buff_size-2];
             uart_.write(crc_buff,2);
             wait_for_send();
+#ifdef Arduino_h
+            Serial.print("rx success @ attempt: ");
+            Serial.print(attempt);
+            Serial.print(" CRC token: ");
+            Serial.print(crc_buff[0],HEX);
+            Serial.print(crc_buff[1],HEX);
+            Serial.println();
+#endif
             return CmdResult::Success;
           }
           else{
             //CRC Failed, send NACK to request resend
             uart_.write(NACK,2);
+#ifdef Arduino_h
+            Serial.print("rx fail @ attempt: ");
+            Serial.print(attempt);
+            Serial.print("  Calc'd CRC: ");
+            Serial.print(crc,HEX);
+            Serial.println();
+#endif
             wait_for_send();
             if (attempt< max_attempts-1){
                 flush_rx();
             }
           }
+        }
+        else{
+            //No bytes read dont count this as an attempt
+            attempt--;
         }
         //cycle_delay_ms(10);
         wait_ms(10);
@@ -169,8 +211,7 @@ UART_CRC::CmdResult UART_CRC::tx_message(){
   tx_buff[buff_size-2]=crc >> 8;
 
   //Set tx_active pin HIGH to signal to rx'er that there is a pending message
-  tx_active=1;
-
+  set_tx_active(1);
   //Main loop for sending message
   for (uint8_t num_attempts=0; num_attempts < max_attempts; num_attempts++){
     
@@ -202,7 +243,7 @@ UART_CRC::CmdResult UART_CRC::tx_message(){
      if ( (crc&0xFF) == crc_buff[0] && (crc>>8) == crc_buff[1] ) {
       //msg sent successfully, we're done here
       flush_tx();
-      tx_active=0;
+      set_tx_active(0);
       return CmdResult::Success ; 
      }
      else{
@@ -213,7 +254,7 @@ UART_CRC::CmdResult UART_CRC::tx_message(){
   //max number of attempts failed.
   //time to give up
   flush_tx();
-  tx_active=0;
+  set_tx_active(0);
   return CmdResult::Failure;
 }
 uint16_t UART_CRC::calcrc(char *ptr, uint16_t len)
