@@ -41,8 +41,12 @@ public:
     UART_CRC( uint8_t tx_active, uint8_t rx_active, 
             uint16_t baud = 9600, uint8_t max_attempts = 16,uint8_t timeout_ms = 100);
 
+    void begin();
+
     //Change this if using a different serial port on the arduino
     HardwareSerial &uart_ = Serial1;
+    uint16_t baud;
+
 #endif
 
     ///@brief uart_crc destructor
@@ -78,6 +82,11 @@ public:
     ///@param[in] len - number of bytes to write  
     void write_tx_buff(char *to_write, uint16_t len);
 
+    ///@brief Set the state of tx_active pin to indicate
+    ///@brief to receiver that a message is incoming
+    ///@param[in] desired state of the tx_active pin
+    void set_tx_active(bool STATE);
+
 
     static const uint16_t buff_size = 32; 
     uint8_t  max_attempts;
@@ -85,15 +94,15 @@ public:
 
 
     char rx_buff[buff_size];
+    char tx_buff[buff_size];
+    uint16_t bytes_wrote=0;
 
 
 private:
     char crc_buff[2]={0,0};
     uint16_t crc=0;
     uint16_t bytes_read=0;
-    uint16_t bytes_wrote=0;
     const char NACK[2]={0,0};
-    char tx_buff[buff_size];
     uint8_t ack_bytes=0;
     char trash=0;
 
