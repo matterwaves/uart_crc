@@ -1,4 +1,4 @@
-#include <mbed.h>
+#include <Arduino.h>
 #include "uart_crc.h"
 
 
@@ -193,6 +193,9 @@ UART_CRC::CmdResult UART_CRC::rx_message(){
         }
         else{
             //No bytes read dont count this as an attempt
+#ifdef Arduino_h
+            Serial.print("Tried to read, but no bytes :(");
+#endif
             attempt--;
         }
         //cycle_delay_ms(10);
@@ -232,9 +235,11 @@ UART_CRC::CmdResult UART_CRC::tx_message(){
         get_c( &crc_buff[ack_bytes++]);
       }
      }
+#ifdef MBED_H 
     debug_.printf("ACK recv'd: ");
     debug_.printf(crc_buff);
     debug_.printf("\n");
+#endif
     ack_bytes=0;
     //Flush UART rx buff 
     flush_uart_rx();
