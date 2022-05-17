@@ -32,6 +32,8 @@ public:
             uint16_t baud = 9600, uint8_t max_attempts = 16,uint8_t timeout_ms = 100);
     UARTSerial uart_;
     Serial debug_;
+    DigitalOut tx_active;
+    DigitalIn rx_active;
 #endif
 
 #ifdef Arduino_h
@@ -47,6 +49,8 @@ public:
     //Change this if using a different serial port on the arduino
     HardwareSerial &uart_ = Serial1;
     uint16_t baud;
+    uint8_t tx_active;
+    uint8_t rx_active;
 
 #endif
 
@@ -119,16 +123,6 @@ private:
 
     ///@brief interface for waiting
     void wait_ms(uint16_t ms);
-
-#ifdef MBED_H
-    DigitalOut tx_active;
-    DigitalIn rx_active;
-#endif
-
-#ifdef Arduino_h
-    uint8_t tx_active;
-    uint8_t rx_active;
-#endif
 };
 
 
