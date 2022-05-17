@@ -1,6 +1,5 @@
 #include <mbed.h>
 #include "uart_crc.h"
-    
 
 
 #ifdef MBED_H
@@ -8,7 +7,7 @@ UART_CRC::UART_CRC(PinName tx, PinName rx, PinName tx_active, PinName rx_active,
         uint16_t baud /*9600*/, uint8_t max_attempts /*15*/,uint8_t timeout_ms/*100*/): 
     tx_active(tx_active,0),rx_active(rx_active),
     max_attempts(max_attempts),timeout_ms(timeout_ms),
-    uart_(tx,rx,baud){
+    uart_(tx,rx,baud), debug_(USBTX,USBRX){
       flush_tx();
       flush_rx();
     }
@@ -163,11 +162,15 @@ UART_CRC::CmdResult UART_CRC::rx_message(){
     }
 
 UART_CRC::CmdResult UART_CRC::tx_message(){
+  
+  //compute CRC and write to last 2 bytes of tx_buff
   crc=calcrc(tx_buff,buff_size-2);
   tx_buff[buff_size-1]=crc & 0xFF;
   tx_buff[buff_size-2]=crc >> 8;
 
+  //Set tx_active pin HIGH to signal to rx'er that there is a pending message
   tx_active=1;
+
   //Main loop for sending message
   for (uint8_t num_attempts=0; num_attempts < max_attempts; num_attempts++){
     
@@ -179,22 +182,23 @@ UART_CRC::CmdResult UART_CRC::tx_message(){
     //Send over UART
     uart_.write(tx_buff,buff_size);
     //Wait until send it complete
-    //uart_.sync();
     wait_for_send();
-    //cycle_delay_ms(10);
     wait_ms(10);
     
     //Wait for ACK/NACK response
-    //Serial.println(F("Waiting for ACK/NACK"));
     while (ack_bytes < 2){
-      //if (uart_.readable()){
       if (readable()){
         get_c( &crc_buff[ack_bytes++]);
       }
      }
-     ack_bytes=0;
+    debug_.printf("ACK recv'd: ");
+    debug_.printf(crc_buff);
+    debug_.printf("\n");
+    ack_bytes=0;
     //Flush UART rx buff 
-    //while(uart_.readable()){uart_.read(&trash,1);}
+    flush_uart_rx();
+
+    // Check ACK/NACK
      if ( (crc&0xFF) == crc_buff[0] && (crc>>8) == crc_buff[1] ) {
       //msg sent successfully, we're done here
       flush_tx();
@@ -204,7 +208,6 @@ UART_CRC::CmdResult UART_CRC::tx_message(){
      else{
      }
      //Wait 50ms between send attempts
-     //cycle_delay_ms(50);
      wait_ms(50);
    }
   //max number of attempts failed.

@@ -31,6 +31,7 @@ public:
     UART_CRC(PinName tx, PinName rx, PinName tx_active, PinName rx_active, 
             uint16_t baud = 9600, uint8_t max_attempts = 16,uint8_t timeout_ms = 100);
     UARTSerial uart_;
+    Serial debug_;
 #endif
 
 #ifdef Arduino_h
@@ -43,6 +44,7 @@ public:
 
     //Change this if using a different serial port on the arduino
     HardwareSerial &uart_ = Serial1;
+    HardwareSerial &debug_ = Serial;
 #endif
 
     ///@brief uart_crc destructor
