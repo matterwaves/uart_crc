@@ -7,3 +7,8 @@ This driver implements a CRC-16 CCIT-False redundancy check and ACK/NACK.
 
 It should work with mbed-os (tested on mbed-5) and arduino.
 
+## STM32 platform
+    * included as a submodule in the git repository
+
+## Arduino platform
+    * include from ~/Arduino/libraries/uart_crc 
