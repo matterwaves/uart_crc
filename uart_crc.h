@@ -93,6 +93,10 @@ public:
     void set_tx_active(bool STATE);
 
 
+    ///@brief flush rx buff if no rx_active flag
+    void flush_if_no_msg();
+
+
     static const uint16_t buff_size = 32; 
     uint8_t  max_attempts;
     uint8_t timeout_ms;
@@ -110,6 +114,12 @@ private:
     const char NACK[2]={0,0};
     uint8_t ack_bytes=0;
     char trash=0;
+#ifdef Arduino_h
+    elapsedMillis ack_timer;
+#endif
+#ifdef MBED_H
+    Timer ack_timer;
+#endif
 
     ///@brief dump the buffer thats managed by the serial driver
     void flush_uart_rx();
@@ -121,8 +131,14 @@ private:
     //@param[in] buff - pointer to buffer to store the char
     void get_c(char *buff);
 
-    ///@brief interface for waiting
+    ///@brief interface for blocking delays
     void wait_ms(uint16_t ms);
+
+    ///@brief interface for resetting stop-watch
+    // Resets count, and starts timer
+    void reset_ack_timer();
+    ///@brief interface for reading elapsed time in ms
+    uint16_t check_ack_timer();
 };
 
 
