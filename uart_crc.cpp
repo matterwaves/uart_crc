@@ -1,5 +1,5 @@
-#include <Arduino.h>
-//#include <mbed.h>
+//#include <Arduino.h>
+#include <mbed.h>
 
 #include "uart_crc.h"
 
@@ -157,7 +157,9 @@ void UART_CRC::reset_ack_timer(){
 
 uint16_t UART_CRC::check_ack_timer(){
 #ifdef MBED_H
-    return (uint16_t) duration_cast<milliseconds>(ack_timer.elapsed_time()).count();
+    //MBED-6.0 or newer
+    //return (uint16_t) duration_cast<milliseconds>(ack_timer.elapsed_time()).count();
+    return ack_timer.read_ms();
 #endif
 #ifdef Arduino_h
     return ack_timer;
@@ -248,7 +250,7 @@ UART_CRC::CmdResult UART_CRC::rx_message(){
 
 UART_CRC::CmdResult UART_CRC::tx_message(){
 
-  uint16_t ack_timeout_ms =50;
+  uint16_t ack_timeout_ms =500;
 
   //compute CRC and write to last 2 bytes of tx_buff
   crc=calcrc(tx_buff,buff_size-2);
@@ -280,7 +282,7 @@ UART_CRC::CmdResult UART_CRC::tx_message(){
       
       if (check_ack_timer() > ack_timeout_ms){
 #ifdef MBED_H 
-          debug_.printf("ACK TIMEOUT\n");
+          debug_.printf("ACK TIMEOUT: %i ms\n",check_ack_timer());
 #endif
 #ifdef Arduino_h
           Serial.print("ACK TIMEOUT\n");
