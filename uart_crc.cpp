@@ -1,4 +1,6 @@
 #include <Arduino.h>
+//#include <mbed.h>
+
 #include "uart_crc.h"
 
 
@@ -93,6 +95,17 @@ bool UART_CRC::pending(){
 #endif
 }
 
+void UART_CRC::flush_if_no_msg(){
+    // sometimes there is lingering chars but no rx_active flag
+    // flush the buffer if this is the case
+#ifdef Arduino_h
+    if (! digitalRead(rx_active) && uart_.available() > 0 ){
+        flush_uart_rx();
+    }
+#endif
+    return; 
+}
+
 bool UART_CRC::readable(){
 #ifdef MBED_H
     return uart_.readable();
@@ -131,6 +144,33 @@ void UART_CRC::set_tx_active(bool STATE){
 #endif
 }
 
+void UART_CRC::reset_ack_timer(){
+#ifdef MBED_H
+    ack_timer.reset();
+    ack_timer.start();
+#endif
+#ifdef Arduino_h
+    ack_timer=0;
+#endif
+
+}
+
+uint16_t UART_CRC::check_ack_timer(){
+#ifdef MBED_H
+    return (uint16_t) duration_cast<milliseconds>(ack_timer.elapsed_time()).count();
+#endif
+#ifdef Arduino_h
+    return ack_timer;
+#endif
+}
+
+
+
+/* Everything below here should use the above interfaces
+ * To avoid platform specific code
+ * There are some arduino-only print statements left, 
+ * but thats the only exception for now
+ */
 
 UART_CRC::CmdResult UART_CRC::rx_message(){
         /*
@@ -207,7 +247,9 @@ UART_CRC::CmdResult UART_CRC::rx_message(){
     }
 
 UART_CRC::CmdResult UART_CRC::tx_message(){
-  
+
+  uint16_t ack_timeout_ms =50;
+
   //compute CRC and write to last 2 bytes of tx_buff
   crc=calcrc(tx_buff,buff_size-2);
   tx_buff[buff_size-1]=crc & 0xFF;
@@ -215,13 +257,13 @@ UART_CRC::CmdResult UART_CRC::tx_message(){
 
   //Set tx_active pin HIGH to signal to rx'er that there is a pending message
   set_tx_active(1);
+
   //Main loop for sending message
   for (uint8_t num_attempts=0; num_attempts < max_attempts; num_attempts++){
     
     //Flush the UART rx buff
     //Make sure that next bytes read will be the ACK/NACK
     flush_uart_rx();
-    //while(uart_.readable()){uart_.read(&trash,1);}
     
     //Send over UART
     uart_.write(tx_buff,buff_size);
@@ -230,9 +272,20 @@ UART_CRC::CmdResult UART_CRC::tx_message(){
     wait_ms(10);
     
     //Wait for ACK/NACK response
+    reset_ack_timer();
     while (ack_bytes < 2){
       if (readable()){
         get_c( &crc_buff[ack_bytes++]);
+      }
+      
+      if (check_ack_timer() > ack_timeout_ms){
+#ifdef MBED_H 
+          debug_.printf("ACK TIMEOUT\n");
+#endif
+#ifdef Arduino_h
+          Serial.print("ACK TIMEOUT\n");
+#endif
+          break;
       }
      }
 #ifdef MBED_H 
@@ -292,6 +345,3 @@ uint16_t UART_CRC::calcrc(char *ptr, uint16_t len)
         }
         return (crc);
     }
-
-
-
